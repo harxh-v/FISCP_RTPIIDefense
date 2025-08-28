@@ -45,10 +45,10 @@ class ISCP:
         for key, value in data.items():
             value = str(value)
 
-            elif key == 'ip_address' and self.ip_pattern.match(value):
+            if key == 'ip_address' and self.ip_pattern.match(value):
                 found_fields.append('ip_address')
             
-            if key == 'name' and ' ' in value.strip() and len(value.strip().split()) >= 2:
+            elif key == 'name' and ' ' in value.strip() and len(value.strip().split()) >= 2:
                 found_fields.append('name')
                 
             elif key == 'email' and self.email_pattern.match(value):
