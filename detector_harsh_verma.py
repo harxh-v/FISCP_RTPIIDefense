@@ -1,3 +1,9 @@
+import re
+from typing import Dict, List, Tuple, Any
+import sys
+import csv
+import json
+
 class ISCP:
     def __init__(self):
         # Regeneration funct
@@ -127,3 +133,64 @@ class ISCP:
                 
         return redacted_data, is_pii
     
+def main():
+    if len(sys.argv) != 2:
+        print("Hi Evaluator..!")
+        print("Usage: python3 detector_harsh_verma.py <file_name>")
+        sys.exit(1)
+    
+    input_file = sys.argv[1]
+    output_file = 'redacted_output_harsh_verma.csv'
+    
+    proc = ISCP()
+    
+    results = []
+    pii_count = 0
+    total_count = 0
+    
+    try:
+        with open(input_file, 'r') as f:
+            reader = csv.reader(f)
+            header = next(reader)
+            
+            for row in reader:
+                record_id, json_data = row
+                total_count += 1
+                
+                try:
+                    data = json.loads(json_data)
+                    
+                    redacted_data, is_pii = proc.process_record(data)
+                    
+                    if is_pii:
+                        pii_count += 1
+                    
+                    redacted_json = json.dumps(redacted_data)
+                    
+                    results.append([record_id, redacted_json, str(is_pii)])
+                    
+                except Exception as e:
+                    print(f"Error processing record {record_id}: {e}")
+                    results.append([record_id, json_data, "False"])
+        
+        # Write output CSV
+        with open(output_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['record_id', 'redacted_data_json', 'is_pii'])
+            writer.writerows(results)
+        
+        print(f"Execution DONE!")
+        print(f"Total records parsed: {total_count}")
+        print(f"Number of records with PII: {pii_count}")
+        print(f"Calculated PII percentage: {pii_count/total_count*100:.1f}%")
+        print(f"Output written to/file dir: {output_file}")
+        
+    except FileNotFoundError:
+        print(f"Error: Input file '{input_file}' not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
