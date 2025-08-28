@@ -12,51 +12,37 @@ class ISCP:
         self.aadhar_pattern = re.compile(r'\b\d{12}\b')
         self.passport_pattern = re.compile(r'\b[A-Z]\d{7}\b')  
         self.email_pattern = re.compile(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b')
-        self.upi_pattern = re.compile(r'\b(?:\d{10}@[a-z]+|[a-z0-9]{3,15}@(?:paytm|ybl|okaxis|icici|sbi|hdfc|axis|kotak|ibl|phonepe|axisbank|hdfcbank|yesbank|unionbank|indianbank|canara|pnb|federal|andhra|karnataka|punjab|maharashtra))\b')
+        self.upi_pattern = re.compile(r'\b[\w.-]+@[a-zA-Z0-9.-]+\b')
     
     def is_standalone_pii(self, key: str, value: str) -> bool:
         value = str(value)
-        
         if key == 'aadhar' or (len(value) == 12 and value.isdigit()):
             return True
-
         if key == 'phone' or (len(value) == 10 and value.isdigit()):
-            return True
-            
-            
+            return True                        
         if key == 'upi_id':
             return True
-
         if key == 'passport' or self.passport_pattern.match(value):
             return True
-
         elif '@' in value and not '.' in value.split('@')[1]:
-
             if self.upi_pattern.match(value.lower()):
-                return True
-            
+                return True         
         return False
     
     def get_combinatorial_fields(self, data: Dict[str, Any]) -> List[str]:
         found_fields = []
-
         # Uses pydefaults
         
         for key, value in data.items():
             value = str(value)
-
             if key == 'ip_address' and self.ip_pattern.match(value):
                 found_fields.append('ip_address')
-            
             elif key == 'name' and ' ' in value.strip() and len(value.strip().split()) >= 2:
                 found_fields.append('name')
-                
             elif key == 'email' and self.email_pattern.match(value):
                 found_fields.append('email')
-                
             elif key == 'address' and ',' in value and any(char.isdigit() for char in value):
                 found_fields.append('address')
-                
             elif key == 'device_id' and len(value) > 3:
                 found_fields.append('device_id')
         
@@ -70,31 +56,24 @@ class ISCP:
 
     def redact_value(self, key: str, value: str) -> str:
         value = str(value)
-
         if key == 'ip_address':
-            return f"{value[:2]}.XXX.XXX.XXX"
-        
-        if key == 'phone' or (len(value) == 10 and value.isdigit()):
+            return f"{value[:3]}.XXX.XXX.XXX"
+        elif key == 'phone':
             return f"{value[:2]}XXXXXX{value[-2:]}"
-        
-        if key == 'aadhar' or (len(value) == 12 and value.isdigit()):
-            return f"{value[:3]}XXXXXXX{value[-2:]}"
-        
-        if key == 'passport' or self.passport_pattern.match(value):
-            return f"{value[0]}XXXXXXX"
-            
+        elif key == 'aadhar':
+            return f"{value[:4]}XXXXXX{value[-2:]}"
+        elif key == 'passport':
+            return f"{value[0]}XXXX{value[-3:]}"
         if key == 'upi_id' or (self.is_standalone_pii('upi_id_check', value) and '@' in value):
             if '@' in value:
                 parts = value.split('@')
                 return f"{parts[0][:2]}XXX@{parts[1]}"
             else:
-                return "[REDACTED_UPI]"
-        
+                return "[REDACTED_UPI]"        
         if key == 'name' and ' ' in value:
             parts = value.split()
             if len(parts) >= 2:
-                return f"{parts[0][0]}XXX {parts[-1][0]}XXX"
-        
+                return f"{parts[0][0]}XXX {parts[-1][0]}XXX"        
         if key == 'email' and '@' in value:
             local, domain = value.split('@', 1)
             return f"{local[:2]}XXX@{domain}"
